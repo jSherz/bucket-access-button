@@ -1,0 +1,13 @@
+
+aws_account_id = "123456789"
+
+// Do an initial plan & apply, encrypt the password with the created KMS key and then enter it here, re-plan and re-apply
+// Then: aws kms encrypt --key-id alias/bucket-access-button/my-bucket-name --plaintext "hunter2"
+encrypted_password = ""
+
+// Generate this https://console.aws.amazon.com/iam/home?#/security_credential
+// Then: aws kms encrypt --key-id alias/bucket-access-button/my-bucket-name --plaintext "file://~/Downloads/pk-ABDE123.pem"
+encrypted_cloudfront_private_key = ""
+
+// Find this https://console.aws.amazon.com/iam/home?#/security_credential
+cloudfront_keypair_id = ""
