@@ -3,7 +3,7 @@
 You have a bucket with a `private` ACL, and you want to share access with only a password. Well,
 now you can.
 
-Try it out at https://jsjs-top-secret-bucket.s3-eu-west-1.amazonaws.com
+Try it out at https://drfk89hh94pbd.cloudfront.net
 
 The password is `hunter2`.
 
@@ -16,6 +16,9 @@ The password is `hunter2`.
 * Access is granted!
 
 ## No really, how does it work?
+
+The bucket is fronted with a CloudFront distribution. The S3 bucket only allows access from the
+distribution.
 
 The button / form sends off to a Lambda function that verifies the password and then produces a
 signed cookie. This cookie is retrieved by the form, set in the browser and then you can view the
