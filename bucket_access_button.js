@@ -6,11 +6,19 @@ const kms = new KMS({apiVersion: "2014-11-01"});
 
 const crypto = require('crypto');
 
+const headers = {
+    "Content-Type": "application/json",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Allow-Methods": "OPTIONS,POST",
+    "Access-Control-Allow-Origin": "*"
+};
+
 const BAD_REQUEST_RESPONSE = {
     statusCode: 400,
     body: JSON.stringify({
         error: "Bad request."
-    })
+    }),
+    headers
 };
 
 const TWENTY_FOUR_HOURS = 60 * 60 * 24;
@@ -100,48 +108,58 @@ const makeSignature = (policy, expires) => {
 
 exports.handler = (event, context, callback) => {
     decryptPassword(() => {
-        if (event.body) {
-            const body = JSON.parse(event.body);
+        try {
+            if (event.body) {
+                const body = JSON.parse(event.body);
 
-            if (body.password) {
-                if (body.password === plaintext_password && plaintext_password !== null && plaintext_password !== "") {
-                    const expires = Math.floor((new Date()).getTime() / 1000) + TWENTY_FOUR_HOURS;
-                    const policy = makePolicy(expires);
-                    const signature = makeSignature(policy, expires);
-                    const keyPairId = process.env.CLOUDFRONT_KEYPAIR_ID;
+                if (body.password) {
+                    if (body.password === plaintext_password && plaintext_password !== null && plaintext_password !== "") {
+                        const expires = Math.floor((new Date()).getTime() / 1000) + TWENTY_FOUR_HOURS;
+                        const policy = makePolicy(expires);
+                        const signature = makeSignature(policy, expires);
+                        const keyPairId = process.env.CLOUDFRONT_KEYPAIR_ID;
 
-                    callback(null, {
-                        statusCode: 200,
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            expires,
-                            signature,
-                            keyPairId,
-                            policy: new Buffer(policy)
-                                .toString("base64")
-                                .replace(/\+/g, "-")
-                                .replace(/=/g, "_")
-                                .replace(/\//g, "~")
-                        })
-                    });
+                        callback(null, {
+                            statusCode: 200,
+                            headers,
+                            body: JSON.stringify({
+                                expires,
+                                signature,
+                                keyPairId,
+                                policy: new Buffer(policy)
+                                    .toString("base64")
+                                    .replace(/\+/g, "-")
+                                    .replace(/=/g, "_")
+                                    .replace(/\//g, "~")
+                            })
+                        });
+                    } else {
+                        console.error("Wrong password or it was set to null or an empty string.");
+                        callback(null, {
+                            statusCode: 401,
+                            headers,
+                            body: JSON.stringify({
+                                error: "Unauthorized."
+                            })
+                        });
+                    }
                 } else {
-                    console.error("Wrong password or it was set to null or an empty string.");
-                    callback(null, {
-                        statusCode: 401,
-                        body: JSON.stringify({
-                            error: "Unauthorized."
-                        })
-                    });
+                    console.error("No password in body!");
+                    callback(null, BAD_REQUEST_RESPONSE);
                 }
             } else {
-                console.error("No password in body!");
+                console.error("No request body!");
                 callback(null, BAD_REQUEST_RESPONSE);
             }
-        } else {
-            console.error("No request body!");
-            callback(null, BAD_REQUEST_RESPONSE);
+        } catch (err) {
+            console.error(err);
+            callback(null, {
+                statusCode: 500,
+                headers,
+                body: JSON.stringify({
+                    error: "Internal server error."
+                })
+            });
         }
     });
 };

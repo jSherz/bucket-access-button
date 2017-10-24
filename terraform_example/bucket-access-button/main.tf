@@ -5,6 +5,21 @@ resource "aws_s3_bucket" "protected_stuff" {
   policy = "${data.aws_iam_policy_document.protected_stuff.json}"
 }
 
+data "template_file" "login" {
+  template = "${file("${path.module}/../../bucket-access-button.html")}"
+
+  vars {
+    api_url = "${aws_api_gateway_deployment.signer.invoke_url}/login"
+  }
+}
+
+resource "aws_s3_bucket_object" "login" {
+  bucket       = "${aws_s3_bucket.protected_stuff.id}"
+  key          = "login.html"
+  content      = "${data.template_file.login.rendered}"
+  content_type = "text/html"
+}
+
 data "aws_iam_policy_document" "protected_stuff" {
   statement {
     sid    = "Allow CloudFront origin access ID to access everything"
@@ -21,20 +36,8 @@ data "aws_iam_policy_document" "protected_stuff" {
     ]
 
     principals {
-      type        = "CanonicalUser"
-      identifiers = ["${aws_cloudfront_origin_access_identity.protected_stuff.s3_canonical_user_id}"]
-    }
-  }
-
-  statement {
-    sid       = "Allow everyone to access login.html"
-    effect    = "Allow"
-    actions   = ["s3:GetObject"]
-    resources = ["arn:aws:s3:::${var.bucket_name}/login.html"]
-
-    principals {
-      type        = "*"
-      identifiers = ["*"]
+      type        = "AWS"
+      identifiers = ["${aws_cloudfront_origin_access_identity.protected_stuff.iam_arn}"]
     }
   }
 }
@@ -92,6 +95,8 @@ resource "aws_cloudfront_distribution" "protected_stuff" {
   }
 
   custom_error_response {
-    
+    error_code         = "403"
+    response_code      = "200"
+    response_page_path = "/login.html"
   }
 }
